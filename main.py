@@ -5,14 +5,16 @@ import sys
 pygame.init()
 
 # Constants
-WIDTH, HEIGHT = 600, 600
+WIDTH, HEIGHT = 700, 600  # Increase width to accommodate the green bar
 LINE_COLOR = (255, 255, 255)
 LINE_WIDTH = 10
+BAR_WIDTH = 100
+BAR_COLOR = (0, 255, 0)
 
 # Constants for X and O
 X_COLOR = (255, 0, 0)
 O_COLOR = (0, 0, 255)
-CELL_SIZE = WIDTH // 3
+CELL_SIZE = (WIDTH - BAR_WIDTH) // 3  # Adjust cell size to exclude the bar
 
 # Grid state
 grid = [[None, None, None], [None, None, None], [None, None, None]]
@@ -23,11 +25,11 @@ pygame.display.set_caption("Tic Tac Toe")
 
 def draw_grid():
     # Draw vertical lines
-    pygame.draw.line(screen, LINE_COLOR, (WIDTH // 3, 0), (WIDTH // 3, HEIGHT), LINE_WIDTH)
-    pygame.draw.line(screen, LINE_COLOR, (2 * WIDTH // 3, 0), (2 * WIDTH // 3, HEIGHT), LINE_WIDTH)
+    pygame.draw.line(screen, LINE_COLOR, (CELL_SIZE, 0), (CELL_SIZE, HEIGHT), LINE_WIDTH)
+    pygame.draw.line(screen, LINE_COLOR, (2 * CELL_SIZE, 0), (2 * CELL_SIZE, HEIGHT), LINE_WIDTH)
     # Draw horizontal lines
-    pygame.draw.line(screen, LINE_COLOR, (0, HEIGHT // 3), (WIDTH, HEIGHT // 3), LINE_WIDTH)
-    pygame.draw.line(screen, LINE_COLOR, (0, 2 * HEIGHT // 3), (WIDTH, 2 * HEIGHT // 3), LINE_WIDTH)
+    pygame.draw.line(screen, LINE_COLOR, (0, HEIGHT // 3), (WIDTH - BAR_WIDTH, HEIGHT // 3), LINE_WIDTH)
+    pygame.draw.line(screen, LINE_COLOR, (0, 2 * HEIGHT // 3), (WIDTH - BAR_WIDTH, 2 * HEIGHT // 3), LINE_WIDTH)
 
 def draw_xo():
     for row in range(3):
@@ -49,15 +51,19 @@ def draw_o(row, col):
     center = (col * CELL_SIZE + CELL_SIZE // 2, row * CELL_SIZE + CELL_SIZE // 2)
     pygame.draw.circle(screen, O_COLOR, center, CELL_SIZE // 2 - 20, LINE_WIDTH)
 
+def draw_bar():
+    pygame.draw.rect(screen, BAR_COLOR, (WIDTH - BAR_WIDTH, 0, BAR_WIDTH, HEIGHT))
+
 def handle_click(pos):
-    row = pos[1] // CELL_SIZE
-    col = pos[0] // CELL_SIZE
-    if grid[row][col] is None:
-        grid[row][col] = 'X'
-    elif grid[row][col] == 'X':
-        grid[row][col] = 'O'
-    else:
-        grid[row][col] = None
+    if pos[0] < WIDTH - BAR_WIDTH:  # Ignore clicks on the bar
+        row = pos[1] // CELL_SIZE
+        col = pos[0] // CELL_SIZE
+        if grid[row][col] is None:
+            grid[row][col] = 'X'
+        elif grid[row][col] == 'X':
+            grid[row][col] = 'O'
+        else:
+            grid[row][col] = None
 
 def main():
     # Main game loop
@@ -75,6 +81,9 @@ def main():
         # Draw the grid
         draw_grid()
         draw_xo()
+
+        # Draw the green bar
+        draw_bar()
 
         # Update the display
         pygame.display.flip()
