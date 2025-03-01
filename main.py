@@ -23,8 +23,9 @@ grid = [[None, None, None], [None, None, None], [None, None, None]]
 # Points
 points = 0
 
-# Hardcore mode
-hardcore_mode = False
+# Modes
+mode = 0  # 0: Normal, 1: Hardcore, 2: Double Hardcore
+block_pos = None
 
 # Set up the display
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -68,33 +69,59 @@ def draw_bar():
     outline_text = font.render(str(points), True, outline_color)
     screen.blit(outline_text, (WIDTH - BAR_WIDTH + 10, 10))
     screen.blit(points_text, (WIDTH - BAR_WIDTH + 10, 10))
-    draw_hardcore_button()
+    draw_mode_button()
 
-def draw_hardcore_button():
-    button_color = (0, 255, 0) if not hardcore_mode else (255, 255, 255)
+def draw_mode_button():
+    if mode == 0:
+        button_color = (0, 255, 0)
+    elif mode == 1:
+        button_color = (255, 0, 0)
+    else:
+        button_color = (255, 105, 180)  # Brighter, more violet pink
     pygame.draw.circle(screen, button_color, (WIDTH - BAR_WIDTH + 50, HEIGHT - 35), 25)
-    if hardcore_mode:
-        pygame.draw.polygon(screen, (0, 0, 0), [(WIDTH - BAR_WIDTH + 35, HEIGHT - 45), (WIDTH - BAR_WIDTH + 65, HEIGHT - 45), (WIDTH - BAR_WIDTH + 50, HEIGHT - 25)])
+    if mode == 1:
+        pygame.draw.polygon(screen, (255, 255, 255), [(WIDTH - BAR_WIDTH + 35, HEIGHT - 45), (WIDTH - BAR_WIDTH + 65, HEIGHT - 45), (WIDTH - BAR_WIDTH + 50, HEIGHT - 25)])
+    elif mode == 2:
+        pygame.draw.line(screen, (255, 255, 255), (WIDTH - BAR_WIDTH + 35, HEIGHT - 35), (WIDTH - BAR_WIDTH + 65, HEIGHT - 35), 5)
+        pygame.draw.line(screen, (255, 255, 255), (WIDTH - BAR_WIDTH + 50, HEIGHT - 50), (WIDTH - BAR_WIDTH + 50, HEIGHT - 20), 5)
+        pygame.draw.line(screen, (255, 255, 255), (WIDTH - BAR_WIDTH + 35, HEIGHT - 50), (WIDTH - BAR_WIDTH + 65, HEIGHT - 20), 5)
+        pygame.draw.line(screen, (255, 255, 255), (WIDTH - BAR_WIDTH + 65, HEIGHT - 50), (WIDTH - BAR_WIDTH + 35, HEIGHT - 20), 5)
 
 def handle_click(pos):
-    global points, hardcore_mode
+    global points, mode, block_pos
     if pos[0] < WIDTH - BAR_WIDTH:  # Ignore clicks on the bar
         row = pos[1] // CELL_SIZE
         col = pos[0] // CELL_SIZE
-        if grid[row][col] is None:
+        if grid[row][col] is None and (block_pos is None or (row, col) != block_pos):
             grid[row][col] = 'O'
             place_random_x()
-            if hardcore_mode:
+            if mode == 1:
                 place_random_x()
+                move_block()
+            elif mode == 2:
+                move_block()
             check_winner()
     elif WIDTH - BAR_WIDTH + 25 <= pos[0] <= WIDTH - BAR_WIDTH + 75 and HEIGHT - 60 <= pos[1] <= HEIGHT - 10:
-        hardcore_mode = not hardcore_mode
+        mode = (mode + 1) % 3
+        if mode == 1 or mode == 2:
+            move_block()
 
 def place_random_x():
-    empty_cells = [(r, c) for r in range(3) for c in range(3) if grid[r][c] is None]
+    empty_cells = [(r, c) for r in range(3) for c in range(3) if grid[r][c] is None and (block_pos is None or (r, c) != block_pos)]
     if empty_cells:
         row, col = random.choice(empty_cells)
         grid[row][col] = 'X'
+
+def move_block():
+    global block_pos
+    empty_cells = [(r, c) for r in range(3) for c in range(3) if grid[r][c] is None]
+    if empty_cells:
+        block_pos = random.choice(empty_cells)
+
+def draw_block():
+    if block_pos and mode == 2:
+        row, col = block_pos
+        pygame.draw.rect(screen, (255, 165, 0), (col * CELL_SIZE, row * CELL_SIZE, CELL_SIZE, CELL_SIZE))  # Orange blinding square
 
 def check_winner():
     global points
@@ -127,8 +154,9 @@ def update_points(winner):
         points -= 1
 
 def reset_board():
-    global grid
+    global grid, block_pos
     grid = [[None, None, None], [None, None, None], [None, None, None]]
+    block_pos = None
 
 def main():
     # Main game loop
@@ -146,6 +174,9 @@ def main():
         # Draw the grid
         draw_grid()
         draw_xo()
+
+        # Draw the block
+        draw_block()
 
         # Draw the green bar
         draw_bar()
