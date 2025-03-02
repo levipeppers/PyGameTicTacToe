@@ -22,6 +22,7 @@ grid = [[None, None, None], [None, None, None], [None, None, None]]
 
 # Points
 points = 0
+gems = 0
 
 # Modes
 mode = 0  # 0: Normal, 1: Hardcore, 2: Double Hardcore
@@ -38,6 +39,9 @@ font = pygame.font.SysFont(None, 48)
 leaderboard = []
 input_name = ""
 input_active = False
+shop_active = False
+selected_symbol = None
+owned_skins = {'O': True, 'T': True, 'S': False, 'D': False}
 
 def draw_grid():
     # Draw vertical lines
@@ -54,6 +58,12 @@ def draw_xo():
                 draw_x(row, col)
             elif grid[row][col] == 'O':
                 draw_o(row, col)
+            elif grid[row][col] == 'T':
+                draw_t(row, col)
+            elif grid[row][col] == 'S':
+                draw_s(row, col)
+            elif grid[row][col] == 'D':
+                draw_d(row, col)
 
 def draw_x(row, col):
     start_pos = (col * CELL_SIZE + 20, row * CELL_SIZE + 20)
@@ -66,6 +76,15 @@ def draw_x(row, col):
 def draw_o(row, col):
     center = (col * CELL_SIZE + CELL_SIZE // 2, row * CELL_SIZE + CELL_SIZE // 2)
     pygame.draw.circle(screen, O_COLOR, center, CELL_SIZE // 2 - 20, LINE_WIDTH)
+
+def draw_t(row, col):
+    pygame.draw.polygon(screen, (255, 255, 0), [(col * CELL_SIZE + 20, row * CELL_SIZE + 20), (col * CELL_SIZE + CELL_SIZE - 20, row * CELL_SIZE + CELL_SIZE // 2), (col * CELL_SIZE + 20, row * CELL_SIZE + CELL_SIZE - 20)], 5)
+
+def draw_s(row, col):
+    pygame.draw.polygon(screen, (255, 105, 180), [(col * CELL_SIZE + 20, row * CELL_SIZE + 20), (col * CELL_SIZE + CELL_SIZE - 20, row * CELL_SIZE + CELL_SIZE // 2), (col * CELL_SIZE + 20, row * CELL_SIZE + CELL_SIZE - 20)], 5)
+
+def draw_d(row, col):
+    pygame.draw.rect(screen, (0, 255, 0), (col * CELL_SIZE + 20, row * CELL_SIZE + 20, CELL_SIZE - 40, CELL_SIZE - 40), 5)
 
 def draw_bar():
     pygame.draw.rect(screen, BAR_COLOR, (WIDTH - BAR_WIDTH, 0, BAR_WIDTH, HEIGHT))
@@ -95,6 +114,12 @@ def draw_mode_button():
 def draw_leaderboard_button():
     pygame.draw.circle(screen, (255, 255, 0), (WIDTH - BAR_WIDTH + 50, HEIGHT - 120), 15)
 
+def draw_shop_button():
+    pygame.draw.circle(screen, (0, 0, 255), (WIDTH - BAR_WIDTH + 50, HEIGHT - 170), 15)
+
+def draw_leave_button():
+    pygame.draw.rect(screen, (255, 0, 0), (WIDTH - 60, 10, 50, 30))
+
 def draw_leaderboard():
     screen.fill((0, 0, 0))
     headers = ["Name", "Mode", "Score"]
@@ -105,14 +130,61 @@ def draw_leaderboard():
         for col, item in enumerate(entry):
             text = font.render(str(item), True, (255, 255, 0))
             screen.blit(text, (col * 200 + 50, 100 + row * 50))
+    draw_leave_button()
+
+def draw_shop():
+    screen.fill((0, 100, 0))  # Dark green background
+    for row in range(4):
+        for col in range(4):
+            pygame.draw.rect(screen, (0, 0, 0), (col * 80 + 200, row * 80 + 50, 70, 70))
+    pygame.draw.circle(screen, O_COLOR, (200 + 35, 50 + 35), 30, 5)  # Hollow blue circle in top-left corner
+    pygame.draw.polygon(screen, (255, 255, 0), [(280, 50), (320, 90), (280, 130)], 5)  # Hollow yellow triangle in second square
+    pygame.draw.polygon(screen, (255, 105, 180), [(360, 50), (380, 70), (400, 50), (420, 70), (400, 90), (420, 110), (400, 130), (380, 110), (360, 130), (380, 90)], 5)  # Hollow pink star in third square
+    pygame.draw.rect(screen, (0, 255, 0), (440, 50, 70, 70), 5)  # Hollow green dollar sign in fourth square
+    pygame.draw.rect(screen, (255, 255, 255), (50, 50, 150, 150))  # Big white square for selected symbol
+    if selected_symbol == 'O':
+        pygame.draw.circle(screen, O_COLOR, (125, 125), 60, 5)  # Hollow blue circle in big square
+    elif selected_symbol == 'T':
+        pygame.draw.polygon(screen, (255, 255, 0), [(85, 85), (165, 125), (85, 165)], 5)  # Hollow yellow triangle in big square
+    elif selected_symbol == 'S':
+        pygame.draw.polygon(screen, (255, 105, 180), [(85, 85), (105, 105), (125, 85), (145, 105), (125, 125), (145, 145), (125, 165), (105, 145), (85, 165), (105, 125)], 5)  # Hollow pink star in big square
+    elif selected_symbol == 'D':
+        pygame.draw.rect(screen, (0, 255, 0), (85, 85, 80, 80), 5)  # Hollow green dollar sign in big square
+        pygame.draw.line(screen, (0, 255, 0), (105, 105), (145, 145), 5)
+        pygame.draw.line(screen, (0, 255, 0), (145, 105), (105, 145), 5)
+    equip_text = None
+    if selected_symbol in owned_skins and owned_skins[selected_symbol]:
+        pygame.draw.rect(screen, (255, 255, 255), (200, 400, 100, 50))  # Equip button
+        equip_text = font.render("Equip", True, (0, 0, 0))
+    else:
+        if selected_symbol == 'S':
+            pygame.draw.rect(screen, (0, 255, 0), (200, 400, 100, 50))  # Buy button
+            equip_text = font.render("Buy: 2", True, (0, 0, 0))
+        elif selected_symbol == 'D':
+            pygame.draw.rect(screen, (0, 255, 0), (200, 400, 100, 50))  # Buy button
+            equip_text = font.render("Buy: 100", True, (0, 0, 0))
+    if equip_text:
+        screen.blit(equip_text, (220, 415))
+    draw_leave_button()
+    gems_text = font.render(f"Gems: {gems}", True, (255, 255, 255))
+    screen.blit(gems_text, (10, 10))
 
 def handle_click(pos):
-    global points, mode, block_pos, input_active
+    global points, mode, block_pos, input_active, shop_active, in_leaderboard
     if pos[0] < WIDTH - BAR_WIDTH:  # Ignore clicks on the bar
         row = pos[1] // CELL_SIZE
         col = pos[0] // CELL_SIZE
         if grid[row][col] is None and (block_pos is None or (row, col) != block_pos):
-            grid[row][col] = 'O'
+            if selected_symbol == 'O':
+                grid[row][col] = 'O'
+            elif selected_symbol == 'T':
+                grid[row][col] = 'T'
+            elif selected_symbol == 'S' and owned_skins['S']:
+                grid[row][col] = 'S'
+            elif selected_symbol == 'D' and owned_skins['D']:
+                grid[row][col] = 'D'
+            else:
+                grid[row][col] = 'O'
             place_random_x()
             if mode == 1:
                 place_random_x()
@@ -120,20 +192,52 @@ def handle_click(pos):
             elif mode == 2:
                 move_block()
             check_winner()
+            if all(grid[row][col] is not None for row in range(3) for col in range(3)):
+                reset_board()
     elif WIDTH - BAR_WIDTH + 35 <= pos[0] <= WIDTH - BAR_WIDTH + 65 and HEIGHT - 135 <= pos[1] <= HEIGHT - 105:
         input_active = True
     elif WIDTH - BAR_WIDTH + 25 <= pos[0] <= WIDTH - BAR_WIDTH + 75 and HEIGHT - 95 <= pos[1] <= HEIGHT - 45:
         mode = (mode + 1) % 3
         if mode == 1 or mode == 2:
             move_block()
+    elif WIDTH - BAR_WIDTH + 35 <= pos[0] <= WIDTH - BAR_WIDTH + 65 and HEIGHT - 185 <= pos[1] <= HEIGHT - 155:
+        shop_active = True
+    elif WIDTH - 60 <= pos[0] <= WIDTH - 10 and 10 <= pos[1] <= 40:
+        in_leaderboard = False
 
 def handle_leaderboard_click(pos):
-    if WIDTH - BAR_WIDTH + 35 <= pos[0] <= WIDTH - BAR_WIDTH + 65 and HEIGHT - 135 <= pos[1] <= HEIGHT - 105:
-        return True
+    global in_leaderboard
+    if WIDTH - 60 <= pos[0] <= WIDTH - 10 and 10 <= pos[1] <= 40:
+        in_leaderboard = False
     return False
 
+def handle_shop_click(pos):
+    global shop_active, selected_symbol, gems
+    if WIDTH - 60 <= pos[0] <= WIDTH - 10 and 10 <= pos[1] <= 40:
+        shop_active = False
+    elif 200 <= pos[0] <= 270 and 50 <= pos[1] <= 120:
+        selected_symbol = 'O'
+    elif 280 <= pos[0] <= 350 and 50 <= pos[1] <= 120:
+        selected_symbol = 'T'
+    elif 360 <= pos[0] <= 430 and 50 <= pos[1] <= 120:
+        selected_symbol = 'S'
+    elif 440 <= pos[0] <= 510 and 50 <= pos[1] <= 120:
+        selected_symbol = 'D'
+    elif 200 <= pos[0] <= 300 and 400 <= pos[1] <= 450:
+        if selected_symbol in owned_skins and owned_skins[selected_symbol]:
+            shop_active = False
+        elif selected_symbol == 'S' and gems >= 2:
+            gems -= 2
+            owned_skins['S'] = True
+        elif selected_symbol == 'D' and gems >= 100:
+            gems -= 100
+            owned_skins['D'] = True
+        else:
+            selected_symbol = None
+
 def handle_leaderboard_input(event):
-    global input_name, points, input_active
+
+    global input_name, points, input_active, gems
     if event.type == pygame.KEYDOWN:
         if event.key == pygame.K_RETURN:
             if len(input_name) == 2 and input_name.isalpha():
@@ -142,6 +246,7 @@ def handle_leaderboard_input(event):
                 leaderboard.sort(key=lambda x: x[2], reverse=True)
                 if len(leaderboard) > 7:
                     leaderboard.pop()
+                gems += points // 5
                 points = 0
                 input_name = ""
                 input_active = False
@@ -155,6 +260,8 @@ def place_random_x():
     if empty_cells:
         row, col = random.choice(empty_cells)
         grid[row][col] = 'X'
+    else:
+        reset_board()
 
 def move_block():
     global block_pos
@@ -192,7 +299,7 @@ def check_winner():
 
 def update_points(winner):
     global points
-    if winner == 'O':
+    if winner == 'O' or winner == 'T':
         points += 1
     elif winner == 'X':
         points -= 1
@@ -202,9 +309,15 @@ def reset_board():
     grid = [[None, None, None], [None, None, None], [None, None, None]]
     block_pos = None
 
+def handle_hover(pos):
+    if 200 <= pos[0] <= 270 and 50 <= pos[1] <= 120:
+        pygame.draw.circle(screen, (0, 0, 255), (125, 125), 30)  # Blue circle in big square
+    elif 300 <= pos[0] <= 370 and 50 <= pos[1] <= 120:
+        pygame.draw.polygon(screen, (255, 255, 0), [(125, 85), (165, 125), (125, 165)])  # Yellow triangle in big square
+
 def main():
+    global input_active, shop_active, in_leaderboard
     in_leaderboard = False
-    global input_active
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -212,17 +325,23 @@ def main():
                 sys.exit()
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if in_leaderboard:
-                    in_leaderboard = False
-                elif handle_leaderboard_click(event.pos):
+                    handle_leaderboard_click(event.pos)
+                elif shop_active:
+                    handle_shop_click(event.pos)
+                elif WIDTH - BAR_WIDTH + 35 <= event.pos[0] <= WIDTH - BAR_WIDTH + 65 and HEIGHT - 135 <= event.pos[1] <= HEIGHT - 105:
                     in_leaderboard = True
                     input_active = True
                 else:
                     handle_click(event.pos)
             elif input_active:
                 handle_leaderboard_input(event)
+            elif event.type == pygame.MOUSEMOTION and shop_active:
+                handle_hover(event.pos)
 
         if in_leaderboard:
             draw_leaderboard()
+        elif shop_active:
+            draw_shop()
         else:
             screen.fill((0, 0, 0))
             draw_grid()
@@ -230,6 +349,7 @@ def main():
             draw_block()
             draw_bar()
             draw_leaderboard_button()
+            draw_shop_button()
             if input_active:
                 name_text = font.render(input_name, True, (255, 255, 255))
                 screen.blit(name_text, (WIDTH - BAR_WIDTH + 10, HEIGHT - 120))
