@@ -98,14 +98,18 @@ def keep_within_bounds(particle):
 # Font for rendering text
 font = pygame.font.Font(None, 36)
 
-# Function to render the menu
-def render_menu():
+# Colors for cycling through interactions
+interaction_colors = ["red", "yellow", "green", "orange", "cyan", None]  # Ensure "cyan" and None are included
+
+# Function to render the menu and handle interaction editing
+def render_menu(edit_mode=False):
     menu_surface = pygame.Surface((width, height))
     menu_surface.set_alpha(200)  # Make it semi-transparent
     menu_surface.fill((50, 50, 50))  # Gray background
 
     # Render text for each color's interactions
     y_offset = 50
+    clickable_areas = []  # Store clickable areas for interaction editing
     for color, interactions in color_interactions.items():
         attract_text = f"{color.capitalize()} attracts: {interactions['attract'] or 'None'}"
         repel_text = f"{color.capitalize()} repels: {interactions['repel'] or 'None'}"
@@ -114,15 +118,23 @@ def render_menu():
         repel_surface = font.render(repel_text, True, (255, 255, 255))
 
         menu_surface.blit(attract_surface, (50, y_offset))
+        if edit_mode:
+            clickable_areas.append(((50, y_offset, 300, 30), color, "attract"))  # Clickable for attract
         y_offset += 40
+
         menu_surface.blit(repel_surface, (50, y_offset))
+        if edit_mode:
+            clickable_areas.append(((50, y_offset, 300, 30), color, "repel"))  # Clickable for repel
         y_offset += 60
 
     screen.blit(menu_surface, (0, 0))
     pygame.display.flip()
 
+    return clickable_areas
+
 # Main game loop
 menu_active = False
+edit_mode = False
 clock = pygame.time.Clock()
 while True:
     for event in pygame.event.get():
@@ -132,9 +144,26 @@ while True:
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_m:  # Toggle menu with 'M'
                 menu_active = not menu_active
+                edit_mode = False  # Disable edit mode when toggling the menu
+            elif event.key == pygame.K_p and menu_active:  # Enable edit mode with 'P'
+                edit_mode = not edit_mode
+
+        elif event.type == pygame.MOUSEBUTTONDOWN and edit_mode and menu_active:
+            mouse_x, mouse_y = pygame.mouse.get_pos()
+            clickable_areas = render_menu(edit_mode=True)  # Get clickable areas
+            for area, color, interaction_type in clickable_areas:
+                x, y, w, h = area
+                if x <= mouse_x <= x + w and y <= mouse_y <= y + h:
+                    # Cycle through the interaction for the clicked color and type
+                    current_value = color_interactions[color][interaction_type]
+                    if current_value not in interaction_colors:
+                        current_value = None  # Default to None if the value is invalid
+                    next_index = (interaction_colors.index(current_value) + 1) % len(interaction_colors)
+                    color_interactions[color][interaction_type] = interaction_colors[next_index]
+                    break  # Stop processing after the first match
 
     if menu_active:
-        render_menu()
+        render_menu(edit_mode=edit_mode)
         continue  # Skip updating particles when the menu is active
 
     # Debugging logs
@@ -396,6 +425,7 @@ while True:
                     cyan_particle[0] += speed * math.cos(angle) * 0.1
                     cyan_particle[1] += speed * math.sin(angle) * 0.1
 
+        # Skip if "repel" is None
         if color_interactions["cyan"]["repel"] == "red":
             for red_particle in red_particles:
                 if distance(cyan_particle, red_particle) < 100:
