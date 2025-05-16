@@ -6,8 +6,9 @@ import math
 pygame.init()
 
 # Screen dimensions
-width, height = 800, 600
-screen = pygame.display.set_mode((width, height))
+width, height = 800, 600  # Keep logical dimensions for element placement
+screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)  # Set fullscreen mode
+fullscreen_width, fullscreen_height = screen.get_size()  # Get actual fullscreen dimensions
 pygame.display.set_caption("Particle Simulation")
 
 # Colors
@@ -88,12 +89,12 @@ def resolve_all_collisions(particles):
 def keep_within_bounds(particle):
     if particle[0] < particle_radius:
         particle[0] = particle_radius
-    elif particle[0] > width - particle_radius:
-        particle[0] = width - particle_radius
+    elif particle[0] > fullscreen_width - particle_radius:  # Use fullscreen_width
+        particle[0] = fullscreen_width - particle_radius
     if particle[1] < particle_radius:
         particle[1] = particle_radius
-    elif particle[1] > height - particle_radius:
-        particle[1] = height - particle_radius
+    elif particle[1] > fullscreen_height - particle_radius:  # Use fullscreen_height
+        particle[1] = fullscreen_height - particle_radius
 
 # Font for rendering text
 font = pygame.font.Font(None, 36)
