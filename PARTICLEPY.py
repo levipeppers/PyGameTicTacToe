@@ -61,6 +61,49 @@ color_interactions = {
     },
 }
 
+# Preset configurations for particle interactions
+preset_configs = {
+    "Cycle": {
+        "red": {"attract": "orange", "repel": "cyan"},
+        "orange": {"attract": "yellow", "repel": "red"},
+        "yellow": {"attract": "green", "repel": "orange"},
+        "green": {"attract": "cyan", "repel": "yellow"},
+        "cyan": {"attract": "red", "repel": "green"}
+    },
+    "Hole": {
+        "red": {"attract": "cyan", "repel": None},
+        "orange": {"attract": "cyan", "repel": None},
+        "yellow": {"attract": "cyan", "repel": None},
+        "green": {"attract": "cyan", "repel": None},
+        "cyan": {"attract": None, "repel": None}
+    },
+    "Random": {  # Keep current random behavior as a preset
+        "red": {
+            "attract": random.choice(["yellow", "green", "orange", "cyan", None]),
+            "repel": random.choice(["yellow", "green", "orange", "cyan", None]),
+        },
+        "yellow": {
+            "attract": random.choice(["red", "green", "orange", "cyan", None]),
+            "repel": random.choice(["red", "green", "orange", "cyan", None]),
+        },
+        "green": {
+            "attract": random.choice(["red", "yellow", "orange", "cyan", None]),
+            "repel": random.choice(["red", "yellow", "orange", "cyan", None]),
+        },
+        "orange": {
+            "attract": random.choice(["red", "yellow", "green", "cyan", None]),
+            "repel": random.choice(["red", "yellow", "green", "cyan", None]),
+        },
+        "cyan": {
+            "attract": random.choice(["red", "yellow", "green", "orange", None]),
+            "repel": random.choice(["red", "yellow", "green", "orange", None]),
+        },
+    }
+}
+
+# Current preset name
+current_preset = "Random"
+
 # Helper function to calculate distance
 def distance(p1, p2):
     return math.hypot(p1[0] - p2[0], p1[1] - p2[1])
@@ -103,30 +146,50 @@ font = pygame.font.Font(None, 36)
 interaction_colors = ["red", "yellow", "green", "orange", "cyan", None]  # Ensure "cyan" and None are included
 
 # Function to render the menu and handle interaction editing
-def render_menu(edit_mode=False):
+def render_menu(edit_mode=False, preset_mode=False):
     menu_surface = pygame.Surface((width, height))
     menu_surface.set_alpha(200)  # Make it semi-transparent
     menu_surface.fill((50, 50, 50))  # Gray background
 
-    # Render text for each color's interactions
-    y_offset = 50
-    clickable_areas = []  # Store clickable areas for interaction editing
-    for color, interactions in color_interactions.items():
-        attract_text = f"{color.capitalize()} attracts: {interactions['attract'] or 'None'}"
-        repel_text = f"{color.capitalize()} repels: {interactions['repel'] or 'None'}"
+    clickable_areas = []  # Store clickable areas
 
-        attract_surface = font.render(attract_text, True, (255, 255, 255))
-        repel_surface = font.render(repel_text, True, (255, 255, 255))
+    if preset_mode:
+        # Render preset options
+        title_text = "Select Preset Configuration:"
+        title_surface = font.render(title_text, True, (255, 255, 255))
+        menu_surface.blit(title_surface, (50, 30))
+        
+        y_offset = 100
+        for i, preset_name in enumerate(preset_configs.keys()):
+            color = (255, 255, 255) if preset_name == current_preset else (200, 200, 200)
+            preset_surface = font.render(preset_name, True, color)
+            menu_surface.blit(preset_surface, (width // 2 - 100, y_offset))
+            clickable_areas.append(((width // 2 - 100, y_offset, 200, 40), preset_name))
+            y_offset += 60
+    else:
+        # Render text for each color's interactions
+        y_offset = 50
+        for color, interactions in color_interactions.items():
+            attract_text = f"{color.capitalize()} attracts: {interactions['attract'] or 'None'}"
+            repel_text = f"{color.capitalize()} repels: {interactions['repel'] or 'None'}"
 
-        menu_surface.blit(attract_surface, (50, y_offset))
-        if edit_mode:
-            clickable_areas.append(((50, y_offset, 300, 30), color, "attract"))  # Clickable for attract
-        y_offset += 40
+            attract_surface = font.render(attract_text, True, (255, 255, 255))
+            repel_surface = font.render(repel_text, True, (255, 255, 255))
 
-        menu_surface.blit(repel_surface, (50, y_offset))
-        if edit_mode:
-            clickable_areas.append(((50, y_offset, 300, 30), color, "repel"))  # Clickable for repel
-        y_offset += 60
+            menu_surface.blit(attract_surface, (50, y_offset))
+            if edit_mode:
+                clickable_areas.append(((50, y_offset, 300, 30), color, "attract"))  # Clickable for attract
+            y_offset += 40
+
+            menu_surface.blit(repel_surface, (50, y_offset))
+            if edit_mode:
+                clickable_areas.append(((50, y_offset, 300, 30), color, "repel"))  # Clickable for repel
+            y_offset += 60
+        
+        # Display current preset name
+        preset_text = f"Current Preset: {current_preset}"
+        preset_surface = font.render(preset_text, True, (255, 255, 0))
+        menu_surface.blit(preset_surface, (width - 350, height - 50))
 
     screen.blit(menu_surface, (0, 0))
     pygame.display.flip()
@@ -136,7 +199,9 @@ def render_menu(edit_mode=False):
 # Main game loop
 menu_active = False
 edit_mode = False
+preset_mode = False
 clock = pygame.time.Clock()
+
 while True:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -146,25 +211,43 @@ while True:
             if event.key == pygame.K_m:  # Toggle menu with 'M'
                 menu_active = not menu_active
                 edit_mode = False  # Disable edit mode when toggling the menu
+                preset_mode = False  # Disable preset mode when toggling the menu
             elif event.key == pygame.K_p and menu_active:  # Enable edit mode with 'P'
                 edit_mode = not edit_mode
+                preset_mode = False
+            elif event.key == pygame.K_r and menu_active:  # Enable preset mode with 'R' instead of 'P'
+                preset_mode = True
+                edit_mode = False
 
-        elif event.type == pygame.MOUSEBUTTONDOWN and edit_mode and menu_active:
+        elif event.type == pygame.MOUSEBUTTONDOWN and menu_active:
             mouse_x, mouse_y = pygame.mouse.get_pos()
-            clickable_areas = render_menu(edit_mode=True)  # Get clickable areas
-            for area, color, interaction_type in clickable_areas:
-                x, y, w, h = area
-                if x <= mouse_x <= x + w and y <= mouse_y <= y + h:
-                    # Cycle through the interaction for the clicked color and type
-                    current_value = color_interactions[color][interaction_type]
-                    if current_value not in interaction_colors:
-                        current_value = None  # Default to None if the value is invalid
-                    next_index = (interaction_colors.index(current_value) + 1) % len(interaction_colors)
-                    color_interactions[color][interaction_type] = interaction_colors[next_index]
-                    break  # Stop processing after the first match
+            
+            if preset_mode:
+                clickable_areas = render_menu(edit_mode=False, preset_mode=True)  # Get clickable areas
+                for area, preset_name in clickable_areas:
+                    x, y, w, h = area
+                    if x <= mouse_x <= x + w and y <= mouse_y <= y + h:
+                        # Apply the selected preset
+                        color_interactions = preset_configs[preset_name].copy()
+                        current_preset = preset_name
+                        print(f"Applied preset: {preset_name}")
+                        break
+            elif edit_mode:
+                clickable_areas = render_menu(edit_mode=True)  # Get clickable areas
+                for area, color, interaction_type in clickable_areas:
+                    x, y, w, h = area
+                    if x <= mouse_x <= x + w and y <= mouse_y <= y + h:
+                        # Cycle through the interaction for the clicked color and type
+                        current_value = color_interactions[color][interaction_type]
+                        if current_value not in interaction_colors:
+                            current_value = None  # Default to None if the value is invalid
+                        next_index = (interaction_colors.index(current_value) + 1) % len(interaction_colors)
+                        color_interactions[color][interaction_type] = interaction_colors[next_index]
+                        current_preset = "Custom"  # Change to custom preset when editing
+                        break
 
     if menu_active:
-        render_menu(edit_mode=edit_mode)
+        render_menu(edit_mode=edit_mode, preset_mode=preset_mode)
         continue  # Skip updating particles when the menu is active
 
     # Debugging logs
